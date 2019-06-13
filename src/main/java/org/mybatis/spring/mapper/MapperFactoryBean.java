@@ -50,6 +50,38 @@ import org.springframework.beans.factory.FactoryBean;
  * @author Eduardo Macarron
  *
  * @see SqlSessionTemplate
+ *
+ *
+ * 为了使用 MyBatis功能，示例中 Spring 配置文件提供了两上 bean 除了之前的分析的
+ * SqlSessionFactoryBean 类型的 bean 以外，还有一个是 MapperFactoryBean 类型的 bean
+ * 结合两个测试用例的综合分析，对于单独使用的 MyBatis 的时候调用数据库接口的方式是
+ *
+ *    UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+ *
+ * 而这一个过程中，其实是 MyBatis 在获取映射的过程中根据配置信息为 UserMapper类型
+ * 动态创建了代理类，而对于 Spring 的创建方式
+ *
+ *    UserMapper userMapper = （UserMapper） context.getBean("userMapper");
+ *
+ * Spring 中获取名为 userMapper 和 bean ，其实是与单独使用 Mybatis 完成了一样的功能，那么我们可以推断，在 bean 的创建过程中一定是使用了
+ * MyBatis 中原生方法 sqlSession.getMapper(UserMapper.class) 进行了一次封装，结合配置文件，我们把分析目标转向 org.mybatis.Spring
+ * mapper.MapperFactoyBean ，初步推测其中的逻辑应该在此类中实现，同样，还是首先查看的，初步推测其中的逻辑应该逻辑就方在此类中实现，
+ * 同样，还是首先查看的类层次结构图，MapperFactoryBean ,如图 9-3 所示
+ *  同样的，在实现的接口中发现了我们感兴趣的，两个接口InitializingBean 与 FactoryBean ，我们分析还是从 bean 的初始化开始
+ *  MapperFactoryBean 的初始化
+ *  因为实现了 InitializingBean 接口，Spring 会保证在 bean 的初始化的时首先调用 afterProperiesSet 方法来完成其初始化的逻辑，追踪这个
+ *  父类，发现 afterPropertiesSet方法，是在 daoSuppoert 类中实现如下,
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
  */
 public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements FactoryBean<T> {
 
@@ -67,10 +99,30 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
 
   /**
    * {@inheritDoc}
+   * 但是从函数的名称来看我们大体推测 MapperFactoryBean 的初始化方法对 DAO 配置的验证以及 Dao 的初始化的工作，其中的 InitDao()
+   * 方法的模板方法，设计为了久给子类做和些进一步的的逻辑处理
+   *
+   *
+   *
+   *
+   * 结合代码我们了解到了对于 Dao 配置验证，Spring 做了以下的几个方面的工作
+   * 父类中对于 sqlSession 不为空的验证
+   *
+   * sqlSession 作为根据接口的创建映射器代理接触类一定不可以为空，而 sqlSession 初始化的工作是在设定其 sqlSessionFactory 属性时完成的
+   *
+   * public void setSqlSessionFactory(SqlsessionFactory sqlSessionFactory){
+   *     if(!this.externalSqlSession){
+   *         this.sqlSession = new SqlSessionTemplate(sqlSessionFactory);
+   *     }
+   * }
+   *
+   * 也就是说，对于下面的配置，如果忽略了对于 sqlSessionFactory 属性的设置，那么在此会被检测出来
+   *
+   *
+   *
    */
   @Override
   protected void checkDaoConfig() {
-    super.checkDaoConfig();
 
     notNull(this.mapperInterface, "Property 'mapperInterface' is required");
 
