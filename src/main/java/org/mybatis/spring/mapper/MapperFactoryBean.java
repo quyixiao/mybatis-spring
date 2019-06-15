@@ -214,6 +214,11 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
    *        // left intentionally blank
    *    }
    *
+   *  没有任何逻辑的实现，只能说明我们找错了地方了，继续找，查看MapperScannerConfigurer 类中对于BeanDefinitionRegistryPostProcessor
+   *  接口中的实现
+   *
+   *
+   *
    *
    *
    *

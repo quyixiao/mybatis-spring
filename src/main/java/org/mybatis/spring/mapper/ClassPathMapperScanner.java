@@ -112,17 +112,49 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
    * Configures parent scanner to search for the right interfaces. It can search
    * for all interfaces or just for those that extends a markerInterface or/and
    * those annotated with the annotationClass
+   *
+   * 代码中得知，根据之前的属性的配置生成对应过滤器
+   * annotationClass属性的处理
+   * 如果annotationClass 不为空，表示用户设置了此属性，那么就要根据此属性生成过虑器以保证达到了用户的想要效果，而封装此属性的过虑器
+   * 就是AnnotationTypeFilter 。 AnnotationTypeFilter保证在扫描对应java 文件时只的接受标记有注解为annotaionClass 的接口
+   * markerInterface属性处理
+   * 如果markerInterface不为空，表示用户设置了此属性，那么就要根据此属性生成过滤器以保证达到用户想要的效果，而封装此属性的过虑器就是
+   * 实现了AssinnableTypeFilter接口的局部类，表示扫描过程中只有实现markerInterface的接口接口才会被接受
+   *
+   * 全局默认处理，
+   * 在上面的两个属性中如果存在其中任何属性，acceptAllInterfaces的值将会改变，但是如果用户没有设定以上的两个属性，那么，Spring会为我们
+   * 增加一个默念的过滤器实现，TypeFilter接口的文件，
+   * package-info.java
+   * 对于命名为package-info 的Java文件，默认不作为逻辑实现，接口，将其排除掉，使用TypeFilter接口局部类实现match方法
+   * 从上面的函数中我们可以看出，控制扫描文件Spring通过不同的过滤器完成，这些定义的过虑器记录在includeFilters和excludeFilters属性中
+   *
+   *
+   *
+   * public void addIncludeFilter(TypeFilter includeFilter){
+   *     this.includeFilters.add(includeFilter);
+   * }
+   *
+   * public void addExcludeFilter(TypeFilter exeludeFilter){
+   *     this.excludeFilters.add(0,excludeFilter);
+   * }
+   *  至于过滤器为什么会扫描过程中起作用，我们在讲解扫描实现时再继续深入研究
+   *  设置相关属性以及生成了对应的过滤器后便可以进行文件的扫描了，找找工作是classPathMapperScanner类型的定义实例，scanner 中的scan方法完成
+   *
+   *
+   *
    */
   public void registerFilters() {
     boolean acceptAllInterfaces = true;
 
     // if specified, use the given annotation and / or marker interface
+    // 对于annotationClass属性的处理
     if (this.annotationClass != null) {
       addIncludeFilter(new AnnotationTypeFilter(this.annotationClass));
       acceptAllInterfaces = false;
     }
 
     // override AssignableTypeFilter to ignore matches on the actual marker interface
+    // 对于markerInterface的属性的处理
     if (this.markerInterface != null) {
       addIncludeFilter(new AssignableTypeFilter(this.markerInterface) {
         @Override
@@ -144,6 +176,7 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
     }
 
     // exclude package-info.java
+    // 不扫描package-info.java文件
     addExcludeFilter(new TypeFilter() {
       @Override
       public boolean match(MetadataReader metadataReader, MetadataReaderFactory metadataReaderFactory) throws IOException {
@@ -157,6 +190,10 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
    * Calls the parent search that will search and register all the candidates.
    * Then the registered objects are post processed to set them as
    * MapperFactoryBeans
+   *  scan是个全局方法，扫描工作通过doScan(basePackages)委托给了doScan方法，同时，还饭的includeAnnotationConfig属性的处理
+   * AnnotationConfigUtils.registerAnnotation  ConfigProcessors(this.registry) 代码主要是完成对注解处理器的简单注册，比如
+   * autoWiredAnnotationBeanPostProcessor，RequiredAnnotationBeanPostProcessor等，这里不再赘述，我们重点研究文件扫描功能的
+   * 实现
    */
   @Override
   public Set<BeanDefinitionHolder> doScan(String... basePackages) {

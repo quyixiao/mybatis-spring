@@ -296,10 +296,21 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
    * {@inheritDoc}
    * 
    * @since 1.0.2
+   * 没有任何逻辑的实现，只能说明我们找错地方了，继续找，查看MapperScannerConfigurer类中对于BeanDefinitionRegisterPostProcessor
+   * 接口中的实现。
+   *
+   * Bingo! 这次找对地方了，大致看一下代码的实现，正是完成对指定路径的扫描的逻辑，那么，我们就以此为入口，详细的分析
+   * MapperScannerConfigurer所提供的逻辑实现。
+   *
+   *
    */
   @Override
   public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
     if (this.processPropertyPlaceHolders) {
+      // processPropertyPlaceHolders属性的处理
+      // 首先，难题就是processPropertyPlaceHolders属性的处理，或许读者并未过多的接触此属性，我们只看看查看
+      // processPropertyPlaceHolders()函数搂反推此属性的代表的功能。
+
       processPropertyPlaceHolders();
     }
 
@@ -323,6 +334,60 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
    * loaded and any property substitution of this class' properties will fail. To avoid this, find
    * any PropertyResourceConfigurers defined in the context and run them on this class' bean
    * definition. Then update the values.
+   *
+   *
+   * 首先，难题就是processPropertyPlaceHolders属性的处理，或许读者并未过多的接触属性，我们只能查看
+   * processPropertyPlaceHolders()函数来反推此属性所代表的功能
+   *
+   * 不知道读者是否悟出了此函数的作用呢，或许此函数的说明会给我们一些提示，BeanDefinitionRegistries会在应用启动的时候调用
+   * ，并且会早于BeanFactoryPostProcessors的调用，这就意味着PropertyResourceConfigurers还没有被加载所有的属性的文件引用
+   * 将会失效
+   *  为了避免此种情况的发生，此方法手动的找出定义的PropertyResourceConfigurers 并进行提前调用以保证于属性的引用可以正常
+   *  工作的。
+   *  我想读者已经有所感悟了，结合之前讲过的PropertyResourceConfigurer的用法，举例说明一下，如果要创建配置文件如test.properties
+   *  并添加属性对
+   *   basePackage=test.mybatis.dao
+   *  然后Spring的配置文件中加入了属性文件解析器
+   *  <bean id="mesHandler" class="org.Springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+   *    <property>
+   *         <list>
+   *             <value="">config/test.properties</value>
+   *         </list>
+   *    </property>
+   *  </bean>
+   *
+   *  修改MapperScannerConfigurer类型中的bean的定义
+   *
+   *  <bean class="org.mybatis.Spring.mapper.MapperScannerConfigurer">
+   *      <property name="basePackage" value="${basePackage}"/>
+   *  </bean>
+   *
+   *
+   *  此时你会发现，这个配置并没有达到预期的效果，因为在解析${basePackage}的时候PropertyPlaceholderConfigurer 还没有被调用的
+   *  ，也就是属性文件中的属性还没有加载到内存中，Spring还是不能直接使用它的，为了解决这个问题，Spring提供了processPropertyPlaceHolders
+   *  属性，你需要这样配置MapperScannerConfigurer类型的bean
+   *
+   *  <bean class="org.mybatis.Spring.mapper.MapperScannerConfigurer">
+   *      <property name="basePackage" value="test.mybatis.dao"/>
+   *      <property name="processPropertyPlaceHolders" value="true"/>
+   *  </bean>
+   *
+   *  通过processPropertyPlaceHolders 属性的配置，将程序引入 我们正在分析的processPropertyPlaceHolder函数中来完成属性文件的加载
+   *  ，至此，我们终于理清了这个属性的作用，再次回顾这个函数的所有事情
+   *
+   *  1.找到所有已经注册的PropertyResourceConfigurer类型的bean
+   *  2.模似Spring中的环境用来处理器，这里通过使用new DefaultListtableBeanFactory()来模拟Spring中的环境，完成处理器的调用后便
+   *  失效，将映射的bean ，也就是MapperScannerConfigurer类型的bean注册到环境中来进行后处理器调用，处理器PropertyPlaceHolderConfigurer
+   *  调用完成的功能，即找出所有的bean 中完成应用属性文件的变量替换，也就是说，在处理调用后，模拟环境拟的MapperScannerConfigurer类型
+   *  的bean如果有引入属性那已经替换了，这时，再将模拟bean中相关的属性提取出来应用在真实的bean中
+   *
+   *  根据配置属性生成过虑器
+   *  在postProcessBeanDefinitionRegistry方法中可以看到，配置中支持多属性的设定，但是我们感兴趣的或者说影响扫描结果的并不多，属性设置
+   *  后通过在scanner.registerFilters()代码中生成对就的过虑器来控制扫描结果
+   *
+   *
+   *
+   *
    */
   private void processPropertyPlaceHolders() {
     Map<String, PropertyResourceConfigurer> prcs = applicationContext.getBeansOfType(PropertyResourceConfigurer.class);
