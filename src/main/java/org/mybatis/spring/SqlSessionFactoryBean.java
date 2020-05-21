@@ -395,7 +395,6 @@ public class SqlSessionFactoryBean implements FactoryBean<SqlSessionFactory>, In
 
     /**
      * Build a {@code SqlSessionFactory} instance.
-     * <p>
      * The default implementation uses the standard MyBatis {@code XMLConfigBuilder} API to build a
      * {@code SqlSessionFactory} instance based on an Reader.
      * Since 1.3.0, it can be specified a {@link Configuration} instance directly(without config file).
@@ -441,10 +440,25 @@ public class SqlSessionFactoryBean implements FactoryBean<SqlSessionFactory>, In
      *       if(this.sqlSessionFactory== null){
      *           afterPropertiessSet();
      *       }
-     *
      *       return this.sqlSessionFactory;
-     *
      *   }
+     *
+     * MyBatis 本是一个 Apache 的一个开源项目， iBatis ，2010 年这个项目由 Apache Software Foundation 迁移到了 Google Code ，
+     * 并且改名为 MyBatis  下载地址为 http://code.google.com/p/mybatis/
+     *  MyBatis 是支持普通的 SQL 查询，存储过程和高级映射的优秀持久层框架，MyBatis 消除了几乎所有的 JDBC 代码和参数的手工设置以及结果
+     *
+     *
+     *  configuration ：  根元素
+     *  properties : 定义配置外在化
+     *  settings : 一些全局性的配置
+     *  typeAliases: 为一些类定义别名
+     *  typeHandlers :定义类型处理，也就是说，定义 Java 类型与数据库中的数据类型之间的转换关系
+     *  objectFactory : 用于指定结果集对象的实例是如何创建的
+     *  plugins : Mybatis 的插件，插件可以修改 MyBatis 内部的运行规则
+     *  environments :  环境
+     *  environment:配置 MyBatis 的环境
+     *  transactionManager : 事务管理器
+     *  dataSource :数据源
      *
      *
      *
