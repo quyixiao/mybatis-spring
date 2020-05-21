@@ -194,12 +194,24 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
    * AnnotationConfigUtils.registerAnnotation  ConfigProcessors(this.registry) 代码主要是完成对注解处理器的简单注册，比如
    * autoWiredAnnotationBeanPostProcessor，RequiredAnnotationBeanPostProcessor等，这里不再赘述，我们重点研究文件扫描功能的
    * 实现
+   *
+   * 此时，虽然还没有完成介绍到了扫描的过程，但是我们也应该理解了Spring中对于自动扫描注册声明MapperScannerConfigurer类型的bean目的
+   * 不需要我们对于每个接口都注册一个MapperFactoryBean类型的对应的bean，但是不在配置文件中注册并不代表这个bean 不存在，而是扫描过程
+   * 中通过编码的方式动态注册，实现过程我们上面的函数中可以看得非常的清楚 ，
+   * 首先，其中的两个bean被注册了一个名为advisorDef 的bean中，advisorDef使用BeanFactoryTransactionAttributeSourceAdvisor作为其
+   * class属性，也就是说beanFactoryTransactionAttributeSourceAdvisor代表当前的bean ,如图10-1所示，具体的代码如下
+   *
+   *                       BeanFactoryTransactionAttributeSourceAdvisor
+   *     AnnotationTracnactionAttributeSource             TransactionInterceptor
+   *
+   *
+   *
    */
   @Override
   public Set<BeanDefinitionHolder> doScan(String... basePackages) {
     Set<BeanDefinitionHolder> beanDefinitions = super.doScan(basePackages);
-
     if (beanDefinitions.isEmpty()) {
+      //如果没有扫描到任何文件发出警告
       logger.warn("No MyBatis mapper was found in '" + Arrays.toString(basePackages) + "' package. Please check your configuration.");
     } else {
       processBeanDefinitions(beanDefinitions);
@@ -222,7 +234,7 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
       // but, the actual class of the bean is MapperFactoryBean
       definition.getConstructorArgumentValues().addGenericArgumentValue(definition.getBeanClassName()); // issue #59
       definition.setBeanClass(this.mapperFactoryBean.getClass());
-
+      // 开始构造MapperFactoryBean 类型的bean
       definition.getPropertyValues().add("addToConfig", this.addToConfig);
 
       boolean explicitFactoryUsed = false;
